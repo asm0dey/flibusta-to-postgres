@@ -4,7 +4,7 @@ services:
     env_file:
     - environment.env
     image: mariadb
-  database-postgres:
+  postgres:
     container_name: flibusta-to-postgres-db-postgres
     env_file:
     - environment.env
@@ -20,6 +20,6 @@ services:
     volumes:
     - ./backup:/backup
     environment:
-    - WAIT_HOSTS=database-mariadb:3306,database-postgres:5432
+    - WAIT_HOSTS=database-mariadb:3306,postgres:5432
     - WAIT_HOSTS_TIMEOUT=300
     - WAIT_SLEEP_INTERVAL=3
