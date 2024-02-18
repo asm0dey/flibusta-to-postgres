@@ -1,0 +1,25 @@
+services:
+  database-mariadb:
+    container_name: flibusta-to-postgres-db-mariadb
+    env_file:
+    - environment.env
+    image: mariadb
+  database-postgres:
+    container_name: flibusta-to-postgres-db-postgres
+    env_file:
+    - environment.env
+    image: postgres
+    volumes:
+      - ./volumes/postgres-init:/docker-entrypoint-initdb.d/
+  converter:
+    container_name: converter
+    build:
+      dockerfile: Dockerfile
+    env_file:
+    - environment.env
+    volumes:
+    - ./backup:/backup
+    environment:
+    - WAIT_HOSTS=database-mariadb:3306,database-postgres:5432
+    - WAIT_HOSTS_TIMEOUT=300
+    - WAIT_SLEEP_INTERVAL=3
