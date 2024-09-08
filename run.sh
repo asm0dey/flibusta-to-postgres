@@ -1,19 +1,19 @@
 #!/bin/bash
-set -e
 set -o pipefail
+set -x
 
-for i in lib.libavtor.sql.gz lib.libtranslator.sql.gz lib.libavtorname.sql.gz lib.libbook.sql.gz lib.libfilename.sql.gz lib.libgenre.sql.gz lib.libgenrelist.sql.gz lib.libjoinedbooks.sql.gz lib.librate.sql.gz lib.librecs.sql.gz lib.libseqname.sql.gz lib.libseq.sql.gz;
-do
-  echo Downloading $i and restoring it to MariaDB
-  FILE=/backup/$i
-  if test -e $FILE
-  then zflag=(-z "$FILE")
-  else zflag=()
-  fi
-  curl "${zflag[@]}" -o $FILE https://flibusta.is/sql/$i
-  zcat $FILE | mysql -u "$MYSQL_USER" -p"$MYSQL_PASSWORD" -h database-mariadb "$MYSQL_DATABASE"
+for f in /dump/*; do
+  gunzip -c $f | mariadb -u "$MYSQL_USER" -p"$MYSQL_PASSWORD" -h mariadb "$MYSQL_DATABASE"
 done
-echo Loading MariaDB to Postgres with pgloader
-pgloader mysql://$MYSQL_USER:$MYSQL_PASSWORD@database-mariadb/main postgresql://$POSTGRES_APPLICATION_USER:$POSTGRES_APPLICATION_USER_PASSWORD@postgres/$POSTGRES_APPLICATION_DATABASE
-echo Dumping Postgres to file
-PGUSER=$POSTGRES_APPLICATION_USER PGPASSWORD=$POSTGRES_APPLICATION_USER_PASSWORD PGDATABASE=$POSTGRES_APPLICATION_DATABASE PGHOST=postgres pg_dump > /backup/backup.sql
+echo "load database
+    from mysql://$MYSQL_USER:$MYSQL_PASSWORD@mariadb/$MYSQL_DATABASE
+    into pgsql://$POSTGRES_APPLICATION_USER:$POSTGRES_APPLICATION_USER_PASSWORD@postgres/$POSTGRES_APPLICATION_DATABASE
+
+  WITH create indexes, reset sequences, foreign keys
+
+  SET maintenance_work_mem to '128MB', work_mem to '12MB';" > load.it
+pgloader load.it
+# pgloader mysql://"$MYSQL_USER":"$MYSQL_PASSWORD"@mariadb/"$MYSQL_DATABASE" pgsql://"$POSTGRES_APPLICATION_USER":"$POSTGRES_APPLICATION_USER_PASSWORD"@postgres/"$POSTGRES_APPLICATION_DATABASE"
+echo postgres:5432:$POSTGRES_APPLICATION_DATABASE:$POSTGRES_APPLICATION_USER:$POSTGRES_APPLICATION_USER_PASSWORD > ~/.pgpass
+chmod 600 ~/.pgpass
+pg_dump -Fc -h postgres -U $POSTGRES_APPLICATION_USER $POSTGRES_APPLICATION_DATABASE > /backup/db.dump
